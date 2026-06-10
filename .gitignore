@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+
+# Dart/Pub
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+doc/api/
+/pubspec.lock
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/App.framework/
+**/ios/Flutter/Flutter.framework/
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Flutter build outputs
+app.*.symbols
+app.*.map.json
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# Editors and IDEs
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# Misc
+*.log
+*.tmp
+*.swp
+*.swo

@@ -1,0 +1,8 @@
+builders:
+  soap_generator:
+    import: "package:soap_dart/builder.dart"
+    builder_factories: ["soapBuilder"]
+    build_extensions: {".dart": [".soap.g.part"]}
+    auto_apply: all_packages
+    build_to: cache
+    applies_builders: ["source_gen|combining_builder"]
