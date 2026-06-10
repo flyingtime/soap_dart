@@ -29,6 +29,7 @@ final class _GeneratorContext {
   final Map<String, WsdlMessage> messages = {};
   final Map<String, WsdlBinding> bindingsByPortType = {};
   final Map<String, WsdlBindingOperation> bindingOps = {};
+  final Map<XsdComplexType, String> anonymousComplexTypeNames = {};
   final Set<String> generatedClasses = {};
   final Set<String> generatedMessageClasses = {};
   bool needsEmptySoapMessage = false;
@@ -96,6 +97,9 @@ final class _GeneratorContext {
         );
       }
     }
+    for (final typeName in complexTypes.keys.toList()) {
+      _cacheNestedAnonymousComplexTypes(complexTypes[typeName]!, typeName);
+    }
     for (final message in document.messages) {
       messages[trimNamespace(message.name)] = message;
     }
@@ -123,6 +127,70 @@ final class _GeneratorContext {
         attributes: type.attributes,
         targetNamespace: type.targetNamespace,
       );
+
+  void _cacheNestedAnonymousComplexTypes(
+    XsdComplexType type,
+    String parentName,
+  ) {
+    for (final element in _complexTypeElements(type)) {
+      final nestedType = element.complexType;
+      final elementName = _elementName(element);
+      if (nestedType == null || elementName == null || elementName.isEmpty) {
+        continue;
+      }
+      final nestedName = anonymousComplexTypeNames.putIfAbsent(
+        nestedType,
+        () {
+          final name = _uniqueComplexTypeName('$parentName-$elementName');
+          complexTypes[name] = _namedComplexType(nestedType, name);
+          return name;
+        },
+      );
+      _cacheNestedAnonymousComplexTypes(nestedType, nestedName);
+    }
+  }
+
+  Iterable<XsdElement> _complexTypeElements(XsdComplexType type) sync* {
+    yield* type.allElements;
+    yield* _sequenceElements(type.sequence);
+    yield* _choiceElements(type.choice);
+
+    final extension = type.complexContent?.extension;
+    if (extension != null) {
+      yield* _sequenceElements(extension.sequence);
+      yield* _choiceElements(extension.choice);
+    }
+  }
+
+  Iterable<XsdElement> _sequenceElements(XsdSequence? sequence) sync* {
+    if (sequence == null) {
+      return;
+    }
+    yield* sequence.elements;
+    for (final choice in sequence.choices) {
+      yield* _choiceElements(choice);
+    }
+  }
+
+  Iterable<XsdElement> _choiceElements(XsdChoice? choice) sync* {
+    if (choice == null) {
+      return;
+    }
+    yield* choice.elements;
+  }
+
+  String _uniqueComplexTypeName(String preferredName) {
+    final baseName = trimNamespace(preferredName);
+    var candidate = baseName;
+    var suffix = 2;
+    while (complexTypes.containsKey(candidate) ||
+        simpleTypes.containsKey(candidate) ||
+        elements.containsKey(candidate)) {
+      candidate = '$baseName$suffix';
+      suffix++;
+    }
+    return candidate;
+  }
 
   List<code.Spec> _simpleTypes() {
     final specs = <code.Spec>[];
@@ -833,7 +901,9 @@ return value.toString();
     }
     final name = _elementName(element);
     if (element.complexType != null && name != null) {
-      return dartClassName(name);
+      return dartClassName(
+        anonymousComplexTypeNames[element.complexType] ?? name,
+      );
     }
     if (element.simpleType?.restriction?.base != null) {
       return _dartType(element.simpleType!.restriction!.base!);

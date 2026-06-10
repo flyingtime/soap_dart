@@ -99,4 +99,59 @@ void main() {
 
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
   });
+
+  test('generates classes for nested anonymous complex types', () async {
+    final document = WsdlParser().parse('''
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:tns="urn:maps"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="urn:maps">
+  <types>
+    <xsd:schema targetNamespace="urn:maps">
+      <xsd:complexType name="anyType2anyTypeMap">
+        <xsd:sequence>
+          <xsd:element maxOccurs="unbounded" minOccurs="0" name="entry">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element maxOccurs="1" minOccurs="0" name="key" type="xsd:anyType"/>
+                <xsd:element maxOccurs="1" minOccurs="0" name="value" type="xsd:anyType"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:sequence>
+      </xsd:complexType>
+      <xsd:element name="getMeetingInfoListResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element maxOccurs="1" minOccurs="1" name="out" nillable="true" type="tns:anyType2anyTypeMap"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+</definitions>
+''');
+    final code = const WsdlDartGenerator().generate(document);
+
+    expect(code, contains('final class AnyType2AnyTypeMapEntry'));
+    expect(code, contains('List<AnyType2AnyTypeMapEntry>'));
+    expect(
+      code,
+      contains(
+        'element.getElementsByLocalName("entry").map(AnyType2AnyTypeMapEntry.fromXml).toList()',
+      ),
+    );
+
+    final dir = await Directory.systemTemp.createTemp('soap_dart_codegen_');
+    addTearDown(() async {
+      await dir.delete(recursive: true);
+    });
+    final generated = File('${dir.path}/nested.dart');
+    await generated.writeAsString(code);
+
+    final result = await Process.run('dart', ['format', generated.path]);
+
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
 }
